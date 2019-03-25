@@ -25,6 +25,10 @@ def test_exempt():
     assert HEADER not in response
 
 
+def test_callable_report_only(request):
+    return True
+
+
 @override_settings(CSP_EXCLUDE_URL_PREFIXES=('/inlines-r-us'))
 def text_exclude():
     request = rf.get('/inlines-r-us/foo')
@@ -35,6 +39,26 @@ def text_exclude():
 
 @override_settings(CSP_REPORT_ONLY=True)
 def test_report_only():
+    request = rf.get('/')
+    response = HttpResponse()
+    mw.process_response(request, response)
+    assert HEADER not in response
+    assert HEADER + '-Report-Only' in response
+
+
+@override_settings(CSP_REPORT_ONLY=lambda request: True)
+def test_report_only_callable():
+    request = rf.get('/')
+    response = HttpResponse()
+    mw.process_response(request, response)
+    assert HEADER not in response
+    assert HEADER + '-Report-Only' in response
+
+
+@override_settings(
+    CSP_REPORT_ONLY='csp.tests.test_middleware.test_callable_report_only'
+)
+def test_report_only_callable_in_string():
     request = rf.get('/')
     response = HttpResponse()
     mw.process_response(request, response)
