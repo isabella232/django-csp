@@ -5,6 +5,8 @@ from functools import partial
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.utils.functional import SimpleLazyObject
+from django.utils.module_loading import import_string
+from django.utils.six import string_types
 from django.utils.six.moves import http_client
 
 try:
@@ -55,7 +57,7 @@ class CSPMiddleware(MiddlewareMixin):
             return response
 
         header = 'Content-Security-Policy'
-        if getattr(settings, 'CSP_REPORT_ONLY', False):
+        if self.is_report_only(request):
             header += '-Report-Only'
 
         if header in response:
@@ -65,6 +67,14 @@ class CSPMiddleware(MiddlewareMixin):
         response[header] = self.build_policy(request, response)
 
         return response
+
+    def is_report_only(self, request):
+        report_only_setting = getattr(settings, 'CSP_REPORT_ONLY', False)
+        if isinstance(report_only_setting, string_types):
+            report_only_setting = import_string(report_only_setting)
+        if callable(report_only_setting):
+            return report_only_setting(request)
+        return report_only_setting
 
     def build_policy(self, request, response):
         config = getattr(response, '_csp_config', None)
